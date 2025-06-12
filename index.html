@@ -9,13 +9,17 @@
         body{font-family:system-ui;margin:0;height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--t)}
         .h{background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;padding:1em;text-align:center;box-shadow:0 4px 6px -1px rgba(0,0,0,.1)}
         #c{flex:1;padding:1em;overflow-y:auto;max-width:600px;margin:0 auto;width:100%}
-        .m{max-width:90%;padding:.8em 1.2em;margin:.6em 0;border-radius:1.2em;font-size:.9em;line-height:1.4;opacity:0;animation:f .3s ease forwards}
+        .m{max-width:90%;padding:.8em 1.2em;margin:.6em 0;border-radius:1.2em;font-size:.9em;line-height:1.4;opacity:0;animation:f .3s ease forwards; position: relative; display: flex; align-items: flex-start; gap: 0.5em}
         .u{background:var(--g);color:#fff;margin-left:auto;box-shadow:0 2px 4px rgba(79,70,229,.2)}
         .b{background:#fff;margin-right:auto;border:1px solid #e2e8f0;box-shadow:0 2px 4px rgba(0,0,0,.05)}
         .i{display:flex;gap:.6em;padding:1em;background:#fff;border-top:1px solid #f1f5f9}
         input{flex:1;padding:.8em 1em;border:1px solid #e2e8f0;border-radius:2em;font-size:.9em}
         input:focus{outline:0;border-color:var(--g)}
         button{padding:.8em 1.4em;background:var(--g);color:#fff;border:0;border-radius:2em;cursor:pointer}
+        .copy-btn{font-size:0.8em;padding:0.2em 0.6em;border:1px solid #e2e8f0;border-radius:0.5em;background:#fff;color:var(--t);cursor:pointer; transition: background 0.2s;}
+        .copy-btn:hover{background:#e2e8f0;}
+        .u .copy-btn{border-color: #fff; background: rgba(255,255,255,0.2); color: #fff;}
+        .u .copy-btn:hover{background: rgba(255,255,255,0.3);}
         @keyframes f{to{opacity:1}}
     </style>
 </head>
@@ -50,7 +54,6 @@
                 });
 
                 const d = await r.json();
-                // Robust response handling
                 if (!d || !d.candidates || !d.candidates[0] || !d.candidates[0].content || !d.candidates[0].content.parts || !d.candidates[0].content.parts[0] || !d.candidates[0].content.parts[0].text) {
                     throw new Error('Invalid API response structure');
                 }
@@ -66,7 +69,64 @@
         function m(t, u) {
             let d = document.createElement('div');
             d.className = `m ${u ? 'u' : 'b'}`;
-            d.textContent = t;
+            
+            let textSpan = document.createElement('span');
+            textSpan.textContent = t;
+            textSpan.style.flex = '1';
+            
+            let copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.textContent = 'Copy';
+            copyBtn.onclick = () => {
+                // Try modern Clipboard API first
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(t).then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                    }).catch((err) => {
+                        console.error('Clipboard API error:', err.message);
+                        // Check if error is due to secure context
+                        if (!window.isSecureContext) {
+                            copyBtn.textContent = 'HTTPS needed';
+                        } else {
+                            copyBtn.textContent = 'Error';
+                        }
+                        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                        // Try fallback method
+                        try {
+                            const textarea = document.createElement('textarea');
+                            textarea.value = t;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textarea);
+                            copyBtn.textContent = 'Copied!';
+                            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                        } catch (fallbackErr) {
+                            console.error('Fallback copy error:', fallbackErr.message);
+                        }
+                    });
+                } else {
+                    // Fallback for browsers without Clipboard API
+                    try {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = t;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                    } catch (err) {
+                        console.error('Fallback copy error:', err.message);
+                        copyBtn.textContent = 'Error';
+                        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                    }
+                }
+            };
+            
+            d.appendChild(textSpan);
+            d.appendChild(copyBtn);
             c.appendChild(d);
             c.scrollTop = c.scrollHeight;
         }
